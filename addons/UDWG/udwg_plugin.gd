@@ -48,9 +48,52 @@ func _exit_tree() -> void:
 	dock.free()
 
 func _refresh_tree() -> void:
+	# Save the collapsed state of all folders before clearing
+	var collapsed_state := _save_tree_state()
+	
 	tree.clear()
 	var root = tree.create_item()
 	_scan_dir(root, "user://")
+	
+	# Restore the collapsed state after rebuilding
+	_restore_tree_state(collapsed_state)
+
+## Recursively saves the collapsed state of all tree items
+func _save_tree_state() -> Dictionary:
+	var state := {}
+	var root := tree.get_root()
+	if root:
+		_save_item_state(root, state)
+	return state
+
+## Helper to recursively save state for a tree item and its children
+func _save_item_state(item: TreeItem, state: Dictionary) -> void:
+	var path = item.get_metadata(0)
+	if path:
+		state[path] = item.collapsed
+	
+	var child := item.get_first_child()
+	while child:
+		_save_item_state(child, state)
+		child = child.get_next()
+
+## Recursively restores the collapsed state of all tree items
+func _restore_tree_state(state: Dictionary) -> void:
+	var root := tree.get_root()
+	if root:
+		_restore_item_state(root, state)
+
+## Helper to recursively restore state for a tree item and its children
+func _restore_item_state(item: TreeItem, state: Dictionary) -> void:
+	var path = item.get_metadata(0)
+	if path and path in state:
+		item.collapsed = state[path]
+	
+	var child := item.get_first_child()
+	while child:
+		_restore_item_state(child, state)
+		child = child.get_next()
+
 
 func _scan_dir(parent_item: TreeItem, path: String) -> void:
 	var dir = DirAccess.open(path)
@@ -65,7 +108,7 @@ func _scan_dir(parent_item: TreeItem, path: String) -> void:
 				item.set_metadata(0, new_path)  # Store full path in metadata
 				
 				if dir.current_is_dir():
-					item.set_icon(0, get_editor_interface().get_base_control().get_theme_icon("Folder", "EditorIcons"))
+					item.set_icon(0, EditorInterface.get_base_control().get_theme_icon("Folder", "EditorIcons"))
 					item.set_icon_modulate(0, Color(0.29, 0.471, 0.596))
 					item.collapsed = true  # Make folders collapsed by default
 					
@@ -83,7 +126,7 @@ func _scan_dir(parent_item: TreeItem, path: String) -> void:
 							icon_name = "PackedScene"
 						"gd":
 							icon_name = "GDScript"
-					item.set_icon(0, get_editor_interface().get_base_control().get_theme_icon(icon_name, "EditorIcons"))
+					item.set_icon(0, EditorInterface.get_base_control().get_theme_icon(icon_name, "EditorIcons"))
 					
 			file_name = dir.get_next()
 		dir.list_dir_end()
@@ -97,13 +140,13 @@ func _on_item_activated() -> void:
 			var ext = path.get_extension().to_lower()
 			match ext:
 				"txt", "md", "json", "cfg", "ini", "gd":
-					get_editor_interface().edit_resource(load(path))
+					EditorInterface.edit_resource(load(path))
 				"tres", "res":
-					get_editor_interface().edit_resource(load(path))
+					EditorInterface.edit_resource(load(path))
 				"tscn":
-					get_editor_interface().open_scene_from_path(path)
+					EditorInterface.open_scene_from_path(path)
 
-func _on_item_mouse_selected(position: Vector2, mouse_button_index: int) -> void:
+func _on_item_mouse_selected(_position: Vector2, mouse_button_index: int) -> void:
 	if mouse_button_index == MOUSE_BUTTON_RIGHT:
 		selected_item = tree.get_selected()
 		if selected_item:
@@ -143,19 +186,20 @@ func _rename_item() -> void:
 	dialog.connect("confirmed", func():
 		var new_name = line_edit.text
 		if new_name != old_name:
-			var new_path = dir_path.path_join(new_name)
+			var _new_path = dir_path.path_join(new_name)
 			var dir = DirAccess.open(dir_path)
 			if dir:
 				# Attempt rename
 				var err = dir.rename(old_name, new_name)
 				if err == OK:
 					_refresh_tree()
+					print_debug("Renamed %s to %s" % [old_name, new_name])
 				else:
 					printerr("Failed to rename file: ", error_string(err))
 	)
 	
 	# Show dialog
-	get_editor_interface().get_base_control().add_child(dialog)
+	EditorInterface.get_base_control().add_child(dialog)
 	dialog.popup_centered()
 
 func _delete_item() -> void:
@@ -182,10 +226,10 @@ func _delete_item() -> void:
 	)
 	
 	# Show dialog
-	get_editor_interface().get_base_control().add_child(dialog)
+	EditorInterface.get_base_control().add_child(dialog)
 	dialog.popup_centered()
 
-func _on_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> Dictionary:
+func _on_button_clicked(item: TreeItem, _column: int, _id: int, mouse_button_index: int) -> Dictionary:
 	if mouse_button_index == MOUSE_BUTTON_LEFT:
 		# Start drag operation
 		var drag_data = {
