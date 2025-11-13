@@ -153,7 +153,6 @@ func _on_item_activated() -> void:
 						# Re-assign the path so the resource knows where to save
 						resource.resource_path = path
 						# Mark it as changed so Godot will prompt to save
-						resource.emit_changed()
 					EditorInterface.edit_resource(resource)
 				"tscn":
 					EditorInterface.open_scene_from_path(path)
