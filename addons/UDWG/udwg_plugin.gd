@@ -142,7 +142,19 @@ func _on_item_activated() -> void:
 				"txt", "md", "json", "cfg", "ini", "gd":
 					EditorInterface.edit_resource(load(path))
 				"tres", "res":
-					EditorInterface.edit_resource(load(path))
+					# Force reload from disk by clearing cache first
+					if ResourceLoader.has_cached(path):
+						var old_resource = ResourceLoader.load(path)
+						if old_resource:
+							old_resource.take_over_path("")  # Remove from cache
+					# Now load fresh from disk
+					var resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+					if resource:
+						# Re-assign the path so the resource knows where to save
+						resource.resource_path = path
+						# Mark it as changed so Godot will prompt to save
+						resource.emit_changed()
+					EditorInterface.edit_resource(resource)
 				"tscn":
 					EditorInterface.open_scene_from_path(path)
 
