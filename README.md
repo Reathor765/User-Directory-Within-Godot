@@ -2,6 +2,12 @@
 
 A Godot 4.x plugin that adds a FileSystem-like dock for browsing and managing files in the user:// directory of your project.
 
+## Note:
+This addon allows you to view files in the inspector, but there are currently issues with the inspector not saving changes back to the file.
+To fix this issue and not need my addon, I recommend creating a Hardlink in your res:// directory.
+on Windows, the command I used was 'mklink /D User_Directory "Path to the user directory"' if your path contains space characters, use the quotation marks to enclose the path.
+I will leave this addon up and will update it when I figure out a way to get full functionality. 
+
 ## Features
 
 - Browse the user:// directory structure in a tree view
